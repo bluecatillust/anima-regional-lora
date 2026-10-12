@@ -70,6 +70,33 @@ Feather guide:
 - `0.05`: a practical starting point.
 - `0.08` to `0.15`: softer transition, but character traits may mix near the center.
 
+## Settings reference
+
+| Setting | Meaning | Recommended starting value |
+| --- | --- | --- |
+| **Enable two-pass Regional LoRA** | Enables the extension. The diffusion model is evaluated once for each side and the two predictions are blended. | On |
+| **Left LoRA alias or filename** | LoRA to apply to the left region. Enter the alias or filename registered in Forge Neo. | Left character LoRA |
+| **Left strength** | Diffusion-model strength of the left LoRA. `0` disables it, while values above `1.0` emphasize it. | `0.8` to `1.0` |
+| **Right LoRA alias or filename** | LoRA to apply to the right region. It must be different from the left LoRA. | Right character LoRA |
+| **Right strength** | Diffusion-model strength of the right LoRA. | `0.8` to `1.0` |
+| **Left/right boundary** | Horizontal split position as a fraction of image width. Increasing it expands the left region. | `0.50` |
+| **Boundary feather** | Width of the soft transition around the boundary as a fraction of image width. | `0.05` |
+
+Boundary examples:
+
+- `0.30`: left 30%, right 70%.
+- `0.50`: equal left and right regions.
+- `0.70`: left 70%, right 30%.
+
+With boundary `0.50` and feather `0.10`, the predictions are blended across
+approximately 45% to 55% of the image width. A smaller feather separates the
+characters more clearly but can reveal a seam. A larger feather gives a
+smoother transition but can mix character traits near the center.
+
+The prompt LoRA tags load the LoRAs into Forge Neo. The **Left strength** and
+**Right strength** controls determine their regional diffusion-model strengths.
+Text-encoder-side effects from the prompt tags are not spatially separated.
+
 ## Limitations
 
 - Only a horizontal left/right split is currently supported.
@@ -152,6 +179,44 @@ Patch LoRAs on-the-fly: True
 
 ぼかし幅を小さくすると左右の分離が明確になり、大きくすると中央が自然に
 つながります。ただし、大きすぎると中央付近でキャラクターの特徴が混ざります。
+
+### 設定項目の意味
+
+| 項目 | 意味 | 推奨初期値 |
+| --- | --- | --- |
+| **Enable two-pass Regional LoRA** | 拡張機能を有効にします。左右のLoRAでモデル計算を1回ずつ行い、その結果を合成します。 | ON |
+| **Left LoRA alias or filename** | 画像の左側へ適用するLoRAです。Forge Neoに登録されている別名またはファイル名を入力します。 | 左キャラクターのLoRA名 |
+| **Left strength** | 左側LoRAの拡散モデル側の強度です。`0`で無効になり、`1.0`を超えると特徴が強くなります。 | `0.8`～`1.0` |
+| **Right LoRA alias or filename** | 画像の右側へ適用するLoRAです。左側とは異なるLoRAを指定します。 | 右キャラクターのLoRA名 |
+| **Right strength** | 右側LoRAの拡散モデル側の強度です。 | `0.8`～`1.0` |
+| **Left/right boundary** | 画像横幅に対する左右の境界位置です。値を大きくすると左領域が広がります。 | `0.50` |
+| **Boundary feather** | 境界をなめらかに混ぜる幅です。画像横幅に対する割合で指定します。 | `0.05` |
+
+**Left/right boundary** の例:
+
+- `0.30`: 左30%、右70%。
+- `0.50`: 左右半分ずつ。
+- `0.70`: 左70%、右30%。
+
+**Boundary feather** の目安:
+
+- `0`～`0.03`: 左右の分離が明確になりますが、中央に継ぎ目が出やすくなります。
+- `0.05`: 標準的な開始値です。
+- `0.08`～`0.15`: 境界が自然になりますが、中央付近で特徴が混ざりやすくなります。
+
+境界`0.50`、ぼかし幅`0.10`の場合、おおむね画像横幅の45%～55%が
+左右の移行領域になります。
+
+プロンプトの`<lora:...:...>`タグにはLoRAをForge Neoへ読み込ませる役割があり、
+設定画面の **Left strength** と **Right strength** が各領域での拡散モデル側の
+強度を決めます。テキストエンコーダー側のLoRA効果は領域分割されません。
+
+最初は、プロンプト側と設定画面側を両方`1.0`にし、設定画面側の強度から
+調整すると分かりやすくなります。
+
+`Patch LoRAs on-the-fly: False`と表示される場合は、Animaプリセットを選んだ後、
+**Diffusion in Low Bits**を **Automatic (fp16 LoRA)** など、名前の末尾が
+**(fp16 LoRA)** の設定へ変更し、モデルを再読み込みしてください。
 
 ### 制限事項
 
