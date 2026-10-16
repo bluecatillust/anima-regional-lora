@@ -10,7 +10,12 @@ import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from regional_lora.core import RegionSpec, RegionalLoraModelWrapper, build_horizontal_masks
+from regional_lora.core import (
+    RegionSpec,
+    RegionalLoraModelWrapper,
+    build_horizontal_masks,
+    build_spatial_masks,
+)
 
 
 class FakePatch:
@@ -25,6 +30,47 @@ class CoreTests(unittest.TestCase):
         self.assertTrue(torch.allclose(left + right, torch.ones(16)))
         self.assertEqual(left[0], 1)
         self.assertEqual(right[-1], 1)
+
+    def test_vertical_masks_split_top_and_bottom(self):
+        region_a, region_b = build_spatial_masks(
+            4,
+            3,
+            "Vertical",
+            0.5,
+            0.0,
+            device=torch.device("cpu"),
+            dtype=torch.float32,
+        )
+        self.assertTrue(torch.equal(region_a[:2], torch.ones(2, 3)))
+        self.assertTrue(torch.equal(region_b[2:], torch.ones(2, 3)))
+        self.assertTrue(torch.allclose(region_a + region_b, torch.ones(4, 3)))
+
+    def test_custom_mask_uses_white_for_region_a(self):
+        custom_mask = torch.tensor([[255, 0], [255, 0]], dtype=torch.uint8)
+        region_a, region_b = build_spatial_masks(
+            2,
+            2,
+            "Custom mask",
+            0.5,
+            0.0,
+            custom_mask=custom_mask,
+            device=torch.device("cpu"),
+            dtype=torch.float32,
+        )
+        self.assertTrue(torch.equal(region_a, torch.tensor([[1.0, 0.0], [1.0, 0.0]])))
+        self.assertTrue(torch.equal(region_b, torch.tensor([[0.0, 1.0], [0.0, 1.0]])))
+
+    def test_custom_mask_is_required(self):
+        with self.assertRaisesRegex(ValueError, "requires a mask image"):
+            build_spatial_masks(
+                2,
+                2,
+                "Custom mask",
+                0.5,
+                0.0,
+                device=torch.device("cpu"),
+                dtype=torch.float32,
+            )
 
     def test_two_pass_blend_and_restore_strengths(self):
         left_name = os.path.join(os.getcwd(), "left.safetensors")

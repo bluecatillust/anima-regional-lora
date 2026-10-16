@@ -1,7 +1,7 @@
 # Anima Regional LoRA for Forge Neo
 
-An experimental Forge Neo extension that assigns one Anima LoRA to the left
-side of an image and another Anima LoRA to the right side.
+An experimental Forge Neo extension that assigns two Anima LoRAs with a
+horizontal split, vertical split, or uploaded custom mask.
 
 [日本語の説明はこちら](#日本語)
 
@@ -15,7 +15,7 @@ At every denoising step, the extension evaluates the diffusion model twice:
 
 1. with the left LoRA enabled and the right LoRA disabled;
 2. with the right LoRA enabled and the left LoRA disabled;
-3. then blends the two predictions with a horizontal mask.
+3. then blends the two predictions with the selected spatial mask.
 
 Forge Neo core files are not modified. Because the diffusion model is evaluated
 twice, generation is usually close to twice as expensive as a normal run.
@@ -60,9 +60,10 @@ Then:
 
 1. Expand **Anima Regional LoRA (experimental)** in txt2img.
 2. Enable **Enable two-pass Regional LoRA**.
-3. Enter the LoRA alias or filename for the left and right regions.
-4. Adjust each LoRA strength if needed.
-5. Start with the boundary at `0.5` and feather at `0.05`.
+3. Select **Horizontal**, **Vertical**, or **Custom mask** under **Region layout**.
+4. Enter the LoRA alias or filename for Region A and Region B.
+5. Adjust each LoRA strength if needed.
+6. Start with the boundary at `0.5` and feather at `0.05`.
 
 Feather guide:
 
@@ -74,13 +75,14 @@ Feather guide:
 
 | Setting | Meaning | Recommended starting value |
 | --- | --- | --- |
-| **Enable two-pass Regional LoRA** | Enables the extension. The diffusion model is evaluated once for each side and the two predictions are blended. | On |
-| **Left LoRA alias or filename** | LoRA to apply to the left region. Enter the alias or filename registered in Forge Neo. | Left character LoRA |
-| **Left strength** | Diffusion-model strength of the left LoRA. `0` disables it, while values above `1.0` emphasize it. | `0.8` to `1.0` |
-| **Right LoRA alias or filename** | LoRA to apply to the right region. It must be different from the left LoRA. | Right character LoRA |
-| **Right strength** | Diffusion-model strength of the right LoRA. | `0.8` to `1.0` |
-| **Left/right boundary** | Horizontal split position as a fraction of image width. Increasing it expands the left region. | `0.50` |
-| **Boundary feather** | Width of the soft transition around the boundary as a fraction of image width. | `0.05` |
+| **Enable two-pass Regional LoRA** | Enables the extension. The diffusion model is evaluated once for each region and the two predictions are blended. | On |
+| **Region layout** | Selects a left/right split, top/bottom split, or uploaded grayscale mask. | `Horizontal` |
+| **Region A LoRA** | LoRA for the left side, top side, or white part of a custom mask. | Character A LoRA |
+| **Region A strength** | Diffusion-model strength of Region A. `0` disables it, while values above `1.0` emphasize it. | `0.8` to `1.0` |
+| **Region B LoRA** | LoRA for the right side, bottom side, or black part of a custom mask. It must differ from Region A. | Character B LoRA |
+| **Region B strength** | Diffusion-model strength of Region B. | `0.8` to `1.0` |
+| **Boundary position** | Split position from the left in Horizontal mode or from the top in Vertical mode. Ignored by Custom mask. | `0.50` |
+| **Boundary feather** | Soft-transition width. In Custom mask mode it additionally softens the uploaded mask. | `0.05` |
 
 Boundary examples:
 
@@ -93,13 +95,26 @@ approximately 45% to 55% of the image width. A smaller feather separates the
 characters more clearly but can reveal a seam. A larger feather gives a
 smoother transition but can mix character traits near the center.
 
-The prompt LoRA tags load the LoRAs into Forge Neo. The **Left strength** and
-**Right strength** controls determine their regional diffusion-model strengths.
+The prompt LoRA tags load the LoRAs into Forge Neo. The **Region A strength** and
+**Region B strength** controls determine their regional diffusion-model strengths.
 Text-encoder-side effects from the prompt tags are not spatially separated.
+
+### Layout modes
+
+- **Horizontal**: Region A is on the left and Region B is on the right.
+- **Vertical**: Region A is on the top and Region B is on the bottom.
+- **Custom mask**: white selects Region A, black selects Region B, and gray
+  blends the two regions.
+
+For Custom mask, upload a grayscale PNG with approximately the same aspect
+ratio as the generated image. The mask is automatically resized to the model
+output. **Boundary position** is ignored, while **Boundary feather** softens the
+mask edge. The mask image itself is not embedded in PNG Info, so it must be
+uploaded again when reproducing a generation.
 
 ## Limitations
 
-- Only a horizontal left/right split is currently supported.
+- Custom masks are user-provided and do not automatically detect people.
 - Diffusion-model compute is approximately doubled.
 - Text-encoder-side LoRA effects are not spatially masked.
 - Results can vary with Forge Neo updates, checkpoints, LoRAs, and samplers.
@@ -128,8 +143,8 @@ compose the characters farther from the center.
 
 ## 日本語
 
-Anima用LoRAを画像の左側と右側に分けて適用する、Forge Neo向けの実験的な
-拡張機能です。
+2つのAnima用LoRAを左右、上下、またはカスタムマスクで分けて適用する、
+Forge Neo向けの実験的な拡張機能です。
 
 各デノイズステップで、左LoRAのみを有効にした計算と右LoRAのみを有効にした
 計算を行い、その結果を横方向のマスクで合成します。Forge Neo本体のファイルは
@@ -173,9 +188,10 @@ Patch LoRAs on-the-fly: True
 
 1. txt2imgの **Anima Regional LoRA (experimental)** を開きます。
 2. **Enable two-pass Regional LoRA** をONにします。
-3. 左右それぞれの欄へLoRAの別名またはファイル名を入力します。
-4. 必要に応じて左右の強度を調整します。
-5. 最初は境界位置 `0.5`、ぼかし幅 `0.05` が目安です。
+3. **Region layout**で **Horizontal**、**Vertical**、**Custom mask** のいずれかを選びます。
+4. Region AとRegion BへLoRAの別名またはファイル名を入力します。
+5. 必要に応じて各領域の強度を調整します。
+6. 最初は境界位置 `0.5`、ぼかし幅 `0.05` が目安です。
 
 ぼかし幅を小さくすると左右の分離が明確になり、大きくすると中央が自然に
 つながります。ただし、大きすぎると中央付近でキャラクターの特徴が混ざります。
@@ -184,15 +200,16 @@ Patch LoRAs on-the-fly: True
 
 | 項目 | 意味 | 推奨初期値 |
 | --- | --- | --- |
-| **Enable two-pass Regional LoRA** | 拡張機能を有効にします。左右のLoRAでモデル計算を1回ずつ行い、その結果を合成します。 | ON |
-| **Left LoRA alias or filename** | 画像の左側へ適用するLoRAです。Forge Neoに登録されている別名またはファイル名を入力します。 | 左キャラクターのLoRA名 |
-| **Left strength** | 左側LoRAの拡散モデル側の強度です。`0`で無効になり、`1.0`を超えると特徴が強くなります。 | `0.8`～`1.0` |
-| **Right LoRA alias or filename** | 画像の右側へ適用するLoRAです。左側とは異なるLoRAを指定します。 | 右キャラクターのLoRA名 |
-| **Right strength** | 右側LoRAの拡散モデル側の強度です。 | `0.8`～`1.0` |
-| **Left/right boundary** | 画像横幅に対する左右の境界位置です。値を大きくすると左領域が広がります。 | `0.50` |
-| **Boundary feather** | 境界をなめらかに混ぜる幅です。画像横幅に対する割合で指定します。 | `0.05` |
+| **Enable two-pass Regional LoRA** | 拡張機能を有効にします。2つの領域のLoRAでモデル計算を1回ずつ行い、その結果を合成します。 | ON |
+| **Region layout** | 左右分割、上下分割、アップロードした白黒マスクのいずれかを選びます。 | `Horizontal` |
+| **Region A LoRA** | 左側、上側、またはCustom maskの白い部分へ適用するLoRAです。 | キャラクターAのLoRA名 |
+| **Region A strength** | Region Aの拡散モデル側の強度です。`0`で無効になり、`1.0`を超えると特徴が強くなります。 | `0.8`～`1.0` |
+| **Region B LoRA** | 右側、下側、またはCustom maskの黒い部分へ適用するLoRAです。Region Aとは異なるLoRAを指定します。 | キャラクターBのLoRA名 |
+| **Region B strength** | Region Bの拡散モデル側の強度です。 | `0.8`～`1.0` |
+| **Boundary position** | Horizontalでは左端から、Verticalでは上端から測った境界位置です。Custom maskでは使用しません。 | `0.50` |
+| **Boundary feather** | 境界をなめらかに混ぜる幅です。Custom maskではアップロード画像の境界もぼかします。 | `0.05` |
 
-**Left/right boundary** の例:
+**Boundary position** の例（Horizontal）:
 
 - `0.30`: 左30%、右70%。
 - `0.50`: 左右半分ずつ。
@@ -208,7 +225,7 @@ Patch LoRAs on-the-fly: True
 左右の移行領域になります。
 
 プロンプトの`<lora:...:...>`タグにはLoRAをForge Neoへ読み込ませる役割があり、
-設定画面の **Left strength** と **Right strength** が各領域での拡散モデル側の
+設定画面の **Region A strength** と **Region B strength** が各領域での拡散モデル側の
 強度を決めます。テキストエンコーダー側のLoRA効果は領域分割されません。
 
 最初は、プロンプト側と設定画面側を両方`1.0`にし、設定画面側の強度から
@@ -218,9 +235,23 @@ Patch LoRAs on-the-fly: True
 **Diffusion in Low Bits**を **Automatic (fp16 LoRA)** など、名前の末尾が
 **(fp16 LoRA)** の設定へ変更し、モデルを再読み込みしてください。
 
+### Region layoutの種類
+
+- **Horizontal**: Region Aが左、Region Bが右になります。
+- **Vertical**: Region Aが上、Region Bが下になります。
+- **Custom mask**: 白い部分がRegion A、黒い部分がRegion B、グレー部分は両者を混合します。
+
+Custom maskでは、生成画像とおおむね同じ縦横比のグレースケールPNGを
+アップロードしてください。画像サイズはモデル出力に合わせて自動調整されます。
+**Boundary position**は使用されず、**Boundary feather**がマスク境界のぼかし量として
+働きます。
+
+Custom mask画像そのものはPNG Infoへ埋め込まれません。過去の生成を再現する場合は、
+同じマスク画像を再度アップロードしてください。
+
 ### 制限事項
 
-- 現在は左右分割のみです。
+- Custom maskは人物を自動認識しません。利用者が白黒マスクを用意する必要があります。
 - 拡散モデルの計算量はおおむね2倍になります。
 - テキストエンコーダー側のLoRA効果は領域分割されません。
 - Forge Neo、モデル、LoRA、サンプラーなどの組み合わせにより結果が変わります。

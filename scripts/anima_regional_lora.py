@@ -39,14 +39,45 @@ class Script(scripts.Script):
                 "Both LoRAs must also be present in the prompt as normal `<lora:...:...>` tags. "
                 "Set **Diffusion in Low Bits** to an option ending in **(fp16 LoRA)**."
             )
+            mask_mode = gr.Radio(
+                ["Horizontal", "Vertical", "Custom mask"],
+                value="Horizontal",
+                label="Region layout",
+            )
             with gr.Row():
-                left_lora = gr.Textbox(label="Left LoRA alias or filename", placeholder="CharacterA")
-                left_strength = gr.Slider(0.0, 2.0, value=1.0, step=0.05, label="Left strength")
+                left_lora = gr.Textbox(
+                    label="Region A LoRA (left / top / white mask)",
+                    placeholder="CharacterA",
+                )
+                left_strength = gr.Slider(0.0, 2.0, value=1.0, step=0.05, label="Region A strength")
             with gr.Row():
-                right_lora = gr.Textbox(label="Right LoRA alias or filename", placeholder="CharacterB")
-                right_strength = gr.Slider(0.0, 2.0, value=1.0, step=0.05, label="Right strength")
-            split = gr.Slider(0.1, 0.9, value=0.5, step=0.01, label="Left/right boundary")
+                right_lora = gr.Textbox(
+                    label="Region B LoRA (right / bottom / black mask)",
+                    placeholder="CharacterB",
+                )
+                right_strength = gr.Slider(0.0, 2.0, value=1.0, step=0.05, label="Region B strength")
+            split = gr.Slider(
+                0.1,
+                0.9,
+                value=0.5,
+                step=0.01,
+                label="Boundary position (Horizontal / Vertical)",
+            )
             feather = gr.Slider(0.0, 0.3, value=0.05, step=0.01, label="Boundary feather")
+            custom_mask = gr.Image(
+                label="Custom mask (white = Region A, black = Region B)",
+                type="numpy",
+                image_mode="L",
+                sources=["upload", "clipboard"],
+                height=256,
+                visible=False,
+            )
+            mask_mode.change(
+                fn=lambda mode: gr.update(visible=mode == "Custom mask"),
+                inputs=mask_mode,
+                outputs=custom_mask,
+                queue=False,
+            )
 
         self.infotext_fields = [
             (enabled, "Anima Regional LoRA"),
@@ -56,8 +87,19 @@ class Script(scripts.Script):
             (right_strength, "Regional LoRA right strength"),
             (split, "Regional LoRA boundary"),
             (feather, "Regional LoRA feather"),
+            (mask_mode, "Regional LoRA layout"),
         ]
-        return [enabled, left_lora, left_strength, right_lora, right_strength, split, feather]
+        return [
+            enabled,
+            left_lora,
+            left_strength,
+            right_lora,
+            right_strength,
+            split,
+            feather,
+            mask_mode,
+            custom_mask,
+        ]
 
     def process_before_every_sampling(
         self,
@@ -69,6 +111,8 @@ class Script(scripts.Script):
         right_strength: float,
         split: float,
         feather: float,
+        mask_mode: str,
+        custom_mask,
         **kwargs,
     ):
         if not enabled:
@@ -94,6 +138,8 @@ class Script(scripts.Script):
                 right=RegionSpec(right_filename, right_strength),
                 split=split,
                 feather=feather,
+                mode=mask_mode,
+                custom_mask=custom_mask,
                 previous_wrapper=previous_wrapper,
             )
             unet.set_model_unet_function_wrapper(wrapper)
@@ -102,12 +148,14 @@ class Script(scripts.Script):
             p.extra_generation_params.update(
                 {
                     "Regional LoRA passes": 2,
+                    "Regional LoRA layout": mask_mode,
                     "Regional LoRA left patches": left_count,
                     "Regional LoRA right patches": right_count,
                 }
             )
             logger.info(
-                "Enabled two-pass Anima Regional LoRA: left=%s (%d patches), right=%s (%d patches)",
+                "Enabled two-pass Anima Regional LoRA: layout=%s, region_a=%s (%d patches), region_b=%s (%d patches)",
+                mask_mode,
                 left_lora,
                 left_count,
                 right_lora,
